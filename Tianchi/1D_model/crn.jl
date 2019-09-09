@@ -53,3 +53,6 @@ end
     ss = steady_states(rn1d,p)
     scatter(ss[1][1],ss[1][1])
 end
+
+
+# need 1d vis for SSS

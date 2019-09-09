@@ -11,7 +11,7 @@ rn1d = @reaction_network begin
      d,                O → ∅
  end a ep b gama th d
 
-p = [1.,1.,1.,1.,1.,1.]
+p = [1., 0.1, 1., 1., 1., 0.5]
 @add_constraints rn1d begin
     Di + Da + Dm = 1
 end
@@ -37,22 +37,10 @@ plot(sol)
 
 
 
-
+# ----- Interact plot for SSS control --------
 using Interact
-using Makie
-@manipulate for ep = 0:0.01:0.5
-    p[2] = ep
-    prob = ODEProblem(rn1d,u0,tspan,p)
-    sol = solve(prob,Rosenbrock23())
-    plot(sol)
-end
-
-
-@manipulate for ep = 0:0.01:0.5
-    p[2] = ep
+@manipulate for a = 0:0.01:1.0 , ep = 0:0.01:0.5, b = 0:0.01:1.0, th = 0:0.01:0.5, gama = 0:0.01:0.5, d = 0:0.01:1.0
+    p = [a,ep,b,gama,th,d]
     ss = steady_states(rn1d,p)
-    scatter(ss[1][1],ss[1][1])
+    plot(sort([i[1] for i in ss]), marker = (:hexagon, 10, 0.7, :green, stroke(1, 0.1, :black, :dot)))
 end
-
-
-# need 1d vis for SSS

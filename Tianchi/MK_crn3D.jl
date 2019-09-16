@@ -131,6 +131,7 @@ vbox(s1, s2, s3, vfield_dm, colorlegend(vfield_dm[end]))
 
 #  ------------- My Reduced model example -------------
 using Parameters, Makie
+using AbstractPlotting
 @with_kw struct rd{T}
     Kₒ::T
     Kₙₜ::T
@@ -151,6 +152,7 @@ end
 P = rd(0.3, 0.2, 0.1, 1., 1., 1000., 1000., 1.0, 1.0, 1.0, 1., 1e-6, 1e-6, 0.05, 1e-6)
 @unpack Kₒ, Kₙₜ, Kd, a₁, d, aₙₜ, aₒ, αₜ, αₒ, αₙ, δ, β, m1, m2, m3 = P
 
+# =====  3D streamplot ========
 f(N,T,O) = Point3f0(
     -Kd*a₁*(d + β)*(Kd*a₁ + β - ((Kd^2*a₁^2*d + Kd^2*a₁^2*β + 2*Kd*a₁*d*β + 2*Kd*a₁*β^2 + 4*N*T*a₁*d*β + d*β^2 + β^3)/(d + β))^0.5)/(2*d*β) - N*T*a₁ - N*δ + O*αₙ/(Kₒ + O) + m1,
 
@@ -160,8 +162,7 @@ f(N,T,O) = Point3f0(
     )
 streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap = :magma, gridsize = (10, 10), arrow_size = 0.04)
 
-
-# =====  3D streamplot ========
+# ------ volume control
 using Parameters, Makie
 @with_kw struct rd{T}
     Kₒ::T
@@ -192,7 +193,7 @@ function f(N,T,O)
 end
 r = range(0, stop = 1, length = 100)
 me = [f(x,y,z) for x = r ,y =r, z=r]
-contour(r,r,r, log.(me), levels = 6, alpha = 0.3, transparency = true)
+Makie.contour(r,r,r, log.(me), levels = 6, alpha = 0.3, transparency = true)
 
 # ------ heatmap control
 s, value = textslider(1:size(me, 3), "slice")
@@ -201,7 +202,7 @@ hbox(s, hmap)
 
 # ------ 2D contour control
 s, value = textslider(1:size(me, 3), "slice")
-contour_2d = contour(lift(idx-> me[:, :, idx], value), levels = 10, colormap = :viridis, padding = (0.0, 0.0))
+contour_2d = Makie.contour(lift(idx-> me[:, :, idx], value), levels = 10, colormap = :viridis, padding = (0.0, 0.0))
 hbox(s, contour_2d)
 
 velo_log = log.(me)

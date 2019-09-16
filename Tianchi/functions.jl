@@ -1,5 +1,5 @@
 # ======= Collection of functions ========
-using DifferentialEquations
+using DifferentialEquations,LinearAlgebra
 # Random numbers with fixed sum function
 function randfixsum(n, dim, tot)
     sol = []
@@ -78,6 +78,29 @@ function JE_stability(solution::Vector{Float64}, rn::DiffEqBase.AbstractReaction
     rn.jac(jac,solution,p,t)
     return (jac,eigen(jac).values)
 end
+
+
+
+
+
+function CRN_Eig(rn,params,ss)
+    J=rand(length(rn.syms),length(rn.syms))
+    t=0
+    jacfun(rn)(J,ss,params,t)
+    return eigvals(J), eigvecs(J)
+end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 using Reduce

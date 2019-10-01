@@ -176,6 +176,38 @@ ps_MC.f_symfuncs
 
 
 
+# Demethy_crn_MC = @reaction_network begin
+#     # N T complex
+#     (a1, Kd*a1),       N + T ↔ NT              # T is recruited by N
+#
+#     # --- Promoter binding
+#     # Oct4 cycle
+#     (r1, K0*r1 ),      O + Do ↔ DO              # O Auto-activation
+#     alpha1,            DO → DO + O              # O translation
+#     delta0,            O → ∅                    # Deg
+#     # Oct4 de-Methylation cycle
+#     a0,                Do → D5mc                # D + DNMT ↔ C₁ → D5mc + DNMT
+#     beta,              D5hmc →  Do              # 5hmC -> C by dilution(replication)
+#     # TET protein
+#     (r1,K0*r1),        Dt + O ↔ DT              # O -> T promoter
+#     alpha1,            DT → DT + T              # T translation
+#     delta0,            T → ∅                    # Deg
+#     # Nanog cycle
+#     (r1, K0*r1 ),       N + Dn ↔ DN             # N Auto-activation
+#     alpha1,             DN → DN + N             # N translation
+#     delta0,             N → ∅                   # Deg
+#     # O activate N
+#     (xi1, K0*xi1),      O + Dn ↔ DN             # O -> N promoter
+#
+#     # ---- Nanog guided Tet1/2
+#     k3,                NT + D5mc → D5hmc + NT   # NT oxidize 5mc -> 5hmC
+#     # k₄,               NT + Dt → DT + NT       # NT induce not only Oct4 but T1
+# end K0 Kd r1 a1 alpha1 delta0 a0 beta xi1 k3
+
+
+
+
+
 Demethy_crn_MC = @reaction_network begin
     # N T complex
     (a1, Kd*a1),       N + T ↔ NT              # T is recruited by N
@@ -202,4 +234,110 @@ Demethy_crn_MC = @reaction_network begin
     # ---- Nanog guided Tet1/2
     k3,                NT + D5mc → D5hmc + NT   # NT oxidize 5mc -> 5hmC
     # k₄,               NT + Dt → DT + NT       # NT induce not only Oct4 but T1
-end K0 Kd r1 a1 alpha1 delta0 a0 beta xi1 k3
+
+    # ---- NTO rate control m1 m2 m3-----
+    m1,              ∅ → N
+    m2,              ∅ → T
+    m3,              ∅ → O
+end K0 Kd r1 a1 alpha1 delta0 a0 beta xi1 k3 m1 m2 m3
+
+
+@add_constraints Demethy_crn_MC begin
+  Do + DO + D5mc + D5hmc  = 1
+  Dt + DT = 1
+  Dn + DN = 1
+end
+
+params = [0.3, 0.1, 1.63792, 1.20623, 1.28428, 1.28329, 0.0776827, 1.46203, 1.75094, 1.51652,    0., 0.05, 0. ]
+ss = steady_states(Demethy_crn_MC,params)
+stability(ss,Demethy_crn_MC,params)
+
+
+
+
+
+
+
+
+
+#  ----------      🔺        +          💠      CRN model ------------
+#  -------- Demethylation   +   TF 2sites binding -------------------
+
+Demethy_TF_MC = @reaction_network begin
+
+    # ============== 💠 ===============
+    # N T complex
+    (a1, Kd*a1),              N + T ↔ NT
+    (d, d),                   NT + NT ↔ NT2     #💚 Need dimerization?
+
+    # --- Promoter binding
+    # Oct4
+    (a_nt, K_nt*a_nt),        NT2 + Do00 ↔ Do10
+    (a_nt, K_nt*a_nt),        NT2 + Do01 ↔ Do11
+    (aO, KO*aO),              O + Do00 ↔ Do01
+    (aO, KO*aO),              O + Do10 ↔ Do11
+    # TET
+    (a_nt, K_nt*a_nt),        NT2 + Dt00 ↔ Dt10
+    (a_nt, K_nt*a_nt),        NT2 + Dt01 ↔ Dt11
+    (aO, KO*aO),              O + Dt00 ↔ Dt01
+    (aO, KO*aO),              O + Dt10 ↔ Dt11
+    # Nanog
+    (aO, KO*aO),              O + Dn0 ↔ Dn1
+
+    # --- Protein production
+    alphaT,                   Dt11 → Dt11 + T
+    alphaO,                   Do11 → Do11 + O
+    alphaN,                   Dn1 → Dn1 + N
+
+    # --- Dilution and Degradation
+    (delta,delta,delta),           (N, T, O) → ∅
+
+    # ============   🔺 ===============
+    # Oct4 de-Methylation cycle  ---- 💚NT or NT2?
+    a_dn,                Do00 → D5mc                # D + DNMT ↔ C₁ → D5mc + DNMT
+    kh,                  NT + D5mc → D5hmc + NT     # NT oxidize 5mc -> 5hmC
+    beta,                D5hmc →  Do00              # 5hmC -> C by
+
+    # ---- NTO rate control m1 m2 m3-----
+    m1,              ∅ → N
+    m2,              ∅ → T
+    m3,              ∅ → O
+end KO K_nt Kd a1 d a_nt aO alphaT alphaO alphaN delta a_dn beta kh m1 m2 m3
+    # ============   🔺 ===============  Demethy_crn_MatlabC
+    # --- Promoter binding
+    # # Oct4 cycle
+    # (r1, K0*r1 ),      O + Do ↔ DO              # O Auto-activation
+    # alpha1,            DO → DO + O              # O translation
+    # delta0,            O → ∅                    # Deg
+    #
+    # # TET protein
+    # (r1,K0*r1),        Dt + O ↔ DT              # O -> T promoter
+    # alpha1,            DT → DT + T              # T translation
+    # delta0,            T → ∅                    # Deg
+    #
+    # # Nanog cycle ----💚 need N auto-activation?
+    # (r1, K0*r1 ),       N + Dn ↔ DN             # N Auto-activation
+    # alpha1,             DN → DN + N             # N translation
+    # delta0,             N → ∅                   # Deg
+    # O activate N
+    # (xi1, K0*xi1),      O + Dn ↔ DN             # O -> N promoter
+    #
+    # ---- Nanog guided Tet1/2
+    #
+    # k₄,               NT + Dt → DT + NT       # NT induce not only Oct4 but T1
+@add_constraints Demethy_TF_MC begin
+  Do00 + Do01 + Do10 + Do11 + D5mc + D5hmc  = 1
+  Dt00 + Dt01 + Dt10 + Dt11 = 1
+  Dn0 + Dn1 = 1
+end
+
+p = [0.3, 0.2, 0.1, 1., 1., 1000., 1000., 1.0, 1.0, 1.0, 1., 1., 1., 1.,  0., 0.05, 0.]
+
+params = [0.3, 0.2, 0.1, 1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1, 1,  0., 0.05, 0.]
+ss = steady_states(Demethy_TF_MC,params)
+stability(ss,Demethy_TF_MC,params)
+
+dfc = DataFrame(vcat(ss))
+dfc.name = Demethy_TF_MC.syms
+var = [:N, :T, :O]
+@show dfc1 = dfc |> @filter(_.name in var) |> DataFrame

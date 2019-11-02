@@ -90,19 +90,24 @@ end
 #     for i in fun.randfixsum(1,3,con)[1] push!(u0,i) end
 #     return u0
 # end
-function DOT_γ_sample(α, ϵ, β, η, θ, δ)
-    C = similar(γ_rg)
-    @suppress for i in eachindex(γ_rg)
+range = 0:0.1:10.
+function DOT_Volume_params(α, ϵ, β, η, γ, θ, δ; range = 0:0.1:10., param = "γ")
+    C = similar(range)
+    @suppress for i in eachindex(range)
         # @show i
-        p = [α, ϵ, β, η, γ_rg[i], θ, δ]
+        if param == "γ"
+            p = [α, ϵ, β, η, range[i], θ, δ]
+        elseif param == "θ"
+            p = [α, ϵ, β, η, γ, range[i], δ]
+        end
         ss = steady_states(rn1d_leak,p)
         sort!(ss, by = x -> x[1])
         # @show ss[1]
         if length(ss) >2
             smpl_max = extrema(vcat(ss...))[2]*1.5
-            cube_O = LinRange(0.,smpl_max,20)
+            cube_O = LinRange(0.,smpl_max,10)
             con = 5
-            tspan = (0., 5e3)
+            tspan = (0., 5e2)
             soma = []
             TV = 0
             for O = cube_O, Di = LinRange(0., con, 20), Da = LinRange(0.,con,20)
@@ -139,30 +144,35 @@ end
 
 # ===test above two functions ====
 C_1d, C_3d = DOT_γ(5., 5., 5., 0.1, 5., 5.)
-C = DOT_γ_sample(5., 5., 5., 0.1, 5., 5.)
-plot(γ_rg,C)
+C = DOT_Volume_params(5., 5., 5., 0.1, 5., 0., 5., range = [0:0.1:2.;2.:1.:10.], param = "θ")
+plot([0:0.1:2.;2.:1.:10.],C)
 
 
 
-#  ======= plot DOT sample ======
+#  ======= plot DOT_Volume_params sample ======
 pp_sample = plot()
-@showprogress for θ = 4.:0.2:5., δ = 4.:0.2:5.
-    C = DOT_γ_sample(5., 5., 5., 0.1, θ, δ)
-    # ind = Ci_1d[Ci_1d.>=0]
-    plot!(pp_sample,γ_rg,C)
+range = 0:20.
+@showprogress for α = 0:0.5:5., ϵ = 0:0.5:5., β = 0:0.5:5., γ = 4.:0.5:5., δ = 4.:0.5:5.
+    C = DOT_Volume_params(α, ϵ, β, 0.1, γ, 5., δ, range = range, param = "θ")
+    if sum(isnan.(C)) < length(C)
+        @show C
+        plot!(pp_sample,range,C)
+    else
+        continue
+    end
     sleep(0.01)
 end
 
-plot(pp_sample,xlabel="Gama", ylabel = "Domain of Attraction %", legend = false)
+plot(pp_sample,xlabel="Theta", ylabel = "Domain of Attraction %", legend = false)
 title!("DOT Sampling")
-savefig(pp_sample,"/Users/chentianchi/Desktop/DOT_sampling_θδ.png")
+savefig(pp_sample,"/Users/chentianchi/Desktop/DOT_volume_θ_all.png")
 
 
 
 
 # ========= DOT_γ plot ===========
 pp = plot()
-γ_rg = 0.:20.
+range = 0.:20.
 @showprogress for α = 1.: 0.5: 5., ϵ = 1.: 0.5: 5., β = 1.: 0.5: 5.,θ = 4.:0.1:5.2, δ = 4.:0.1:5.2
     Ci_1d, Ci_3d = DOT_γ(α, ϵ, β, 0.1, θ, δ)
     # @show Ci_1d
@@ -186,8 +196,6 @@ savefig(pp,"/Users/chentianchi/Desktop/αβϵθδ.png")
 #     sleep(0.01)
 # end
 # hcat(P_set...)
-
-
 
 
 

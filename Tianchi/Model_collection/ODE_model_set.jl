@@ -106,3 +106,38 @@ Demethy_reduced_ode_MatlabC = @ode_def_bare begin # m1 -> N     m2 -> T     m3 -
 
     dO = (Kd*(K0*a0*beta*m3 - K0*O*a0*beta*delta0 - K0*O*a0*beta*xi1 + (K0^2*a0*beta*xi1*(N*r1 + O*xi1))/(K0*r1 + N*r1 + K0*xi1 + O*xi1) + (K0*O*a0*beta*xi1*(N*r1 + O*xi1))/(K0*r1 + N*r1 + K0*xi1 + O*xi1) + (N*O*T*alpha1*beta*k3)/Kd + (K0*N*T*a0*k3*m3)/Kd + (K0*N*T*beta*k3*m3)/Kd + (N*O*T*beta*k3*m3)/Kd - (N*O^2*T*beta*delta0*k3)/Kd - (N*O^2*T*beta*k3*xi1)/Kd - (K0*N*O*T*a0*delta0*k3)/Kd - (K0*N*O*T*beta*delta0*k3)/Kd - (K0*N*O*T*a0*k3*xi1)/Kd - (K0*N*O*T*beta*k3*xi1)/Kd + (K0^2*N*T*a0*k3*xi1*(N*r1 + O*xi1))/(Kd*(K0*r1 + N*r1 + K0*xi1 + O*xi1)) + (K0^2*N*T*beta*k3*xi1*(N*r1 + O*xi1))/(Kd*(K0*r1 + N*r1 + K0*xi1 + O*xi1)) + (N*O^2*T*beta*k3*xi1*(N*r1 + O*xi1))/(Kd*(K0*r1 + N*r1 + K0*xi1 + O*xi1)) + (K0*N*O*T*a0*k3*xi1*(N*r1 + O*xi1))/(Kd*(K0*r1 + N*r1 + K0*xi1 + O*xi1)) + (2*K0*N*O*T*beta*k3*xi1*(N*r1 + O*xi1))/(Kd*(K0*r1 + N*r1 + K0*xi1 + O*xi1))))/(K0*Kd*a0*beta + K0*N*T*a0*k3 + K0*N*T*beta*k3 + N*O*T*beta*k3)
 end K0 Kd r1 alpha1 delta0 a0 beta xi1 k3 m1 m2 m3
+
+
+
+
+
+# convert from Demethy_TF_MC.f_symfuncs
+Demethy_TF_ode_MC = @ode_def_bare begin # m1 -> N     m2 -> T     m3 -> O
+    dN    = m1 + Dn1*alphaN - N*delta - N*T*a1 + NT*Kd*a1
+    dT    = m2 + Dt11*alphaT - T*delta - N*T*a1 + NT*Kd*a1
+    dNT   = -d*NT^2 + 2*d*NT2 + N*T*a1 - NT*Kd*a1
+    dNT2  = (1/2)*d*NT^2 - d*NT2 + K_nt*a_nt*Do10 + K_nt*a_nt*Do11 + K_nt*a_nt*Dt10 + K_nt*a_nt*Dt11 - NT2*a_nt*Do00 - NT2*a_nt*Do01 - NT2*a_nt*Dt00 - NT2*a_nt*Dt01
+    dDo00 = -a_dn*Do00 + beta*D5hmc + KO*aO*Do01 + K_nt*a_nt*Do10 - NT2*a_nt*Do00 - O*aO*Do00
+    dDo10 = KO*aO*Do11 - K_nt*a_nt*Do10 + NT2*a_nt*Do00 - O*aO*Do10
+    dDo01 = -KO*aO*Do01 + K_nt*a_nt*Do11 - NT2*a_nt*Do01 + O*aO*Do00
+    dDo11 = -KO*aO*Do11 - K_nt*a_nt*Do11 + NT2*a_nt*Do01 + O*aO*Do10
+    dO    = m3 + Do11*alphaO - O*delta + KO*aO*Dn1 + KO*aO*Do01 + KO*aO*Do11 + KO*aO*Dt01 + KO*aO*Dt11 - O*aO*Dn0 - O*aO*Do00 - O*aO*Do10 - O*aO*Dt00 - O*aO*Dt10
+    dDt00 = KO*aO*Dt01 + K_nt*a_nt*Dt10 - NT2*a_nt*Dt00 - O*aO*Dt00
+    dDt10 = KO*aO*Dt11 - K_nt*a_nt*Dt10 + NT2*a_nt*Dt00 - O*aO*Dt10
+    dDt01 = -KO*aO*Dt01 + K_nt*a_nt*Dt11 - NT2*a_nt*Dt01 + O*aO*Dt00
+    dDt11 = -KO*aO*Dt11 - K_nt*a_nt*Dt11 + NT2*a_nt*Dt01 + O*aO*Dt10
+    dDn0  = KO*aO*Dn1 - O*aO*Dn0
+    dDn1  = -KO*aO*Dn1 + O*aO*Dn0
+    dD5mc = a_dn*Do00 - kh*NT*D5mc
+    dD5hmc = -beta*D5hmc + kh*NT*D5mc
+end KO K_nt Kd a1 d a_nt aO alphaT alphaO alphaN delta a_dn beta kh m1 m2 m3
+
+
+
+
+# Demethy + TF reduced to 3d(NTO)
+Demethy_TF_ode_reduced_MC = @ode_def_bare begin # m1 -> N     m2 -> T     m3 -> O
+    dN = m1 - N*delta + (O*alphaN)/(KO + O)
+    dT = m2 - T*delta + (N^2*O*T^2*alphaT)/((2*K_nt*Kd^2 + N^2*T^2)*(KO + O))
+    dO = (N^3*O*T^3*alphaO*beta*kh + KO*N^3*T^3*beta*kh*m3 + N^3*O*T^3*beta*kh*m3 - N^3*O^2*T^3*beta*delta*kh + 2*KO*K_nt*Kd^3*a_dn*beta*m3 - 2*KO*K_nt*Kd^3*O*a_dn*beta*delta - KO*N^3*O*T^3*beta*delta*kh + 2*KO*K_nt*Kd^2*N*T*a_dn*kh*m3 + 2*KO*K_nt*Kd^2*N*T*beta*kh*m3 + 2*K_nt*Kd^2*N*O*T*beta*kh*m3 - 2*K_nt*Kd^2*N*O^2*T*beta*delta*kh - 2*KO*K_nt*Kd^2*N*O*T*a_dn*delta*kh - 2*KO*K_nt*Kd^2*N*O*T*beta*delta*kh)/(2*KO*K_nt*Kd^3*a_dn*beta + KO*N^3*T^3*beta*kh + N^3*O*T^3*beta*kh + 2*KO*K_nt*Kd^2*N*T*a_dn*kh + 2*KO*K_nt*Kd^2*N*T*beta*kh + 2*K_nt*Kd^2*N*O*T*beta*kh)
+end KO K_nt Kd a1 d a_nt aO alphaT alphaO alphaN delta a_dn beta kh m1 m2 m3

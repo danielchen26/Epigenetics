@@ -69,10 +69,10 @@ gif(anim, "/Users/chentianchi/Desktop/demethy_rd.gif", fps = 10)
 
 
 
-# =========================== Below syntax is Maltab NC ================================
-# =========================== Below syntax is Maltab NC ================================
-# =========================== Below syntax is Maltab NC ================================
-# =========================== Below syntax is Maltab NC ================================
+# =========================== Below syntax is Maltab Compatible ================================
+# =========================== Below syntax is Maltab Compatible ================================
+# =========================== Below syntax is Maltab Compatible ================================
+# =========================== Below syntax is Maltab Compatible ================================
 
 
 

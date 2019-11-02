@@ -2,7 +2,7 @@
 using DiffEqBiological, LinearAlgebra
 using Plots;gr()
 using DataFrames, Queryverse, Latexify
-
+include(pwd()*"/functions.jl")
 
 # Function =====
 function EigenVector(Demethy_TF_MC,p,ss)
@@ -80,8 +80,6 @@ sb2 = stability_tianchi(ss,Demethy_TF_MC,p, 3)
 
 @show round_ss = [round.(i,digits = 2) for i in ss]
 @show [round.(real(JE_stability(i, Demethy_TF_MC, p)[2]),digits = 2) for i in ss]
-
-
 
 
 

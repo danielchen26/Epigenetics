@@ -1,5 +1,10 @@
 # ======= Collection of functions ========
 using DifferentialEquations,LinearAlgebra
+
+
+# =================== Basic Functions # ===================# ===================
+# ===================# ===================# ===================# ===================
+
 # Random numbers with fixed sum function
 function randfixsum(n, dim, tot)
     sol = []
@@ -28,7 +33,6 @@ end
 #     return ts, cb
 # end
 
-
 # function make_cb2(ts_in, vars...)
 #     ts = ts_in
 #     condition(u,t,integrator) = t in ts
@@ -47,10 +51,6 @@ end
 #     @show vars[1], vars[2], vars[3], vars[4], vars[5], vars[6]
 #     return ts, cb
 # end
-
-
-
-
 
 
 function make_cb(ts_in, vars...)
@@ -73,15 +73,33 @@ end
 
 
 
+# using Reduce
+# function subs(old, new, Eq)
+#     Algebra.sub(old => new, Eq) |> mat
+# end
+# function solve(Eq, var)
+#     Algebra.solve(:(0  == $Eq),var)
+# end
+
+
+
+
+
+
+# =================== Stability Test # ===================# ===================
+# ===================# ===================# ===================# ===================
 function JE_stability(solution::Vector{Float64}, rn::DiffEqBase.AbstractReactionNetwork, p::Vector{Float64}, t=0.::Float64)
     jac = zeros(length(rn.syms),length(rn.syms))
     rn.jac(jac,solution,p,t)
     return (jac,eigen(jac).values)
 end
 
-
-
-
+function EigenVector(Demethy_TF_MC,p,ss)
+    J=rand(length(Demethy_TF_MC.syms),length(Demethy_TF_MC.syms))
+    t=0
+    jacfun(Demethy_TF_MC)(J,ss,p,t)
+    return eigvecs(J)
+end
 
 function CRN_Eig(rn,params,ss)
     J=rand(length(rn.syms),length(rn.syms))
@@ -89,36 +107,12 @@ function CRN_Eig(rn,params,ss)
     jacfun(rn)(J,ss,params,t)
     return eigvals(J), eigvecs(J)
 end
+# ===================# ===================# ===================# ===================
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-using Reduce
-function subs(old, new, Eq)
-    Algebra.sub(old => new, Eq) |> mat
-end
-function solve(Eq, var)
-    Algebra.solve(:(0  == $Eq),var)
-end
-
-
-
-
-
-[:blue :cyan :orange :red]
-["Stable Real" "Stable Complex" "Unstable Complex" "Unstable Real"])
-
-
+# ===================# ===================# ===================# ===================
 # Defineing the Statbility function for checking  SSS
 """
     stability_tianchi(ss, model, param)
@@ -154,3 +148,27 @@ function stability_tianchi(ss, model, p, con_len)
     # @show sb_ind
     return sb_ind .== length(ss[1])
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+######=======---------------- Macros ---------------------========#####

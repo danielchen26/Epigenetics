@@ -110,3 +110,47 @@ end
 function solve(Eq, var)
     Algebra.solve(:(0  == $Eq),var)
 end
+
+
+
+
+
+[:blue :cyan :orange :red]
+["Stable Real" "Stable Complex" "Unstable Complex" "Unstable Real"])
+
+
+# Defineing the Statbility function for checking  SSS
+"""
+    stability_tianchi(ss, model, param)
+# We classify the stability depends on the real and complex part of the Eigen spectrum of the steady state solution(SSS)
+1. Caculate The `Eigen spectrum` of the SSS
+2. Check the `Real` and `Complex` part of the `Eigen spectrum`
+    - SSS is `Real`, check the sign
+        - All `Real` are negative, then := `Stable Real`
+        - At least one `Real` is positive , then:= `Unstable Real`
+    - SSS is `Complex`, check both `real`, and `complex` part
+        - All `Real` are negative, then := `Stable Complex`
+        - At least one `Real` is positive, then:= `Unstable Complex`
+
+# Color Coding Stability
+- `Stable Real` := `blue`
+- `Stable Complex` := `cyan`
+- `Unstable Complex` := `orange`
+- `Unstable Real` := `red`
+
+"""
+function stability_tianchi(ss, model, p, con_len)
+
+    function JE_stability(solution::Vector{Float64}, rn::DiffEqBase.AbstractReactionNetwork, p::Vector{Float64}, t=0.::Float64)
+        jac = zeros(length(rn.syms),length(rn.syms))
+        rn.jac(jac,solution,p,t)
+        return (jac,eigen(jac).values)
+    end
+    # Caculate The Eigen_spectrum of the Steady states solutions
+    Eigen_spectrum = [JE_stability(i, Demethy_TF_MC, p)[2] for i in ss]
+    # Check the real part of the Eigen_spectrum of SSS with -1e-10 thred
+    sb_ind =  [sum(real(i).< -1e-10) .+ con_len for i in Eigen_spectrum]
+    # Show the Total number of dimensions that is stable + the conservation law
+    # @show sb_ind
+    return sb_ind .== length(ss[1])
+end

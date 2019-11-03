@@ -67,8 +67,7 @@ end KO K_nt Kd a1 d a_nt aO alphaT alphaO alphaN delta a_dn kh beta m1 m2 m3
 @add_constraints Demethy_TF_MC begin
   Do00 + Do01 + Do10 + Do11 + D5mc + D5hmc  = 1
   Dt00 + Dt01 + Dt10 + Dt11 = 1
-  Dn0 + Dn1 = 1
-end
+  Dn0 + Dn1 = 1 end
 
 p = [0.3, 0.2, 0.1, 1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1, 1,  0., 0.05, 0.]
 p = [0.1, 0.2, 0.2, 5., 0., 500., 500., 5.0, 5.0, 5.0, 5., 5., 5., 5.,  0., 0.05, 0.]

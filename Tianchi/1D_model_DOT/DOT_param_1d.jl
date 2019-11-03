@@ -1,9 +1,9 @@
 using DiffEqBiological, DifferentialEquations
 using Plots;gr()
 using LinearAlgebra
-module fun
-    include("../functions.jl")
-end
+
+include(pwd()*"/functions.jl")
+
 
 
 # 1. ======== CRN ========
@@ -23,6 +23,9 @@ p = [1., 0.2, 1., 0.03, 1., 0.25, 0.22]
 p = [5., 5., 5., 0.1, 10.5, 5., 5.]
 ss = steady_states(rn1d_leak,p)
 sort!(ss, by = x -> x[1])
+sb = stability(ss,rn1d_leak,p)
+sb2 = stability_tianchi(ss,rn1d_leak,p,1)
+
 
 
 
@@ -218,6 +221,11 @@ savefig(pp,"/Users/chentianchi/Desktop/αβϵθδ.png")
 
 
 
+# example savinf variables
+# ----  Saving Data for reproducible plots in the future ---
+using JLD2
+@save "out.jld2" ss
+@load "out.jld2" ss
 
 
 
@@ -231,15 +239,7 @@ savefig(pp,"/Users/chentianchi/Desktop/αβϵθδ.png")
 
 
 
-
-
-
-
-
-
-
-
-
+# Multithreading setup
 # # ode ensemble_prob plots
 # using Distributed
 # using DifferentialEquations
@@ -259,8 +259,6 @@ savefig(pp,"/Users/chentianchi/Desktop/αβϵθδ.png")
 # sim = solve(ensemble_prob,Tsit5(),trajectories=100)
 #
 # plot(sim,la=0.9)
-
-
 # # Solving an SDE with Different Parameters
 # function f(du,u,p,t)
 #   du[1] = p[1] * u[1] - p[2] * u[1]*u[2]

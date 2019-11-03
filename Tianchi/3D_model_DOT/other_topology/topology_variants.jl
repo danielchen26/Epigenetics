@@ -4,22 +4,6 @@ using Plots;gr()
 using DataFrames, Queryverse, Latexify
 include(pwd()*"/functions.jl")
 
-# Function =====
-function EigenVector(Demethy_TF_MC,p,ss)
-    J=rand(length(Demethy_TF_MC.syms),length(Demethy_TF_MC.syms))
-    t=0
-    jacfun(Demethy_TF_MC)(J,ss,p,t)
-    return eigvecs(J)
-end
-
-function JE_stability(solution::Vector{Float64}, rn::DiffEqBase.AbstractReactionNetwork, p::Vector{Float64}, t=0.::Float64)
-    jac = zeros(length(rn.syms),length(rn.syms))
-    rn.jac(jac,solution,p,t)
-    return (jac,eigen(jac).values)
-end
-
-
-
 
 
 # ======= Original CRN ========

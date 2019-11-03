@@ -141,7 +141,7 @@ function stability_tianchi(ss, model, p, con_len)
         return (jac,eigen(jac).values)
     end
     # Caculate The Eigen_spectrum of the Steady states solutions
-    Eigen_spectrum = [JE_stability(i, Demethy_TF_MC, p)[2] for i in ss]
+    Eigen_spectrum = [JE_stability(i, model, p)[2] for i in ss]
     # Check the real part of the Eigen_spectrum of SSS with -1e-10 thred
     sb_ind =  [sum(real(i).< -1e-10) .+ con_len for i in Eigen_spectrum]
     # Show the Total number of dimensions that is stable + the conservation law

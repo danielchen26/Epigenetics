@@ -142,7 +142,8 @@ end
 
 
 
-p = [0.3, 0.2, 0.1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1,  0., 0.05, 0.]
+p = [0.3, 0.2, 0.1, 1., 10., 500., 500., 1.0, 1.0, 1.0, 1., 1., 1.,  0., 0.05, 0.] # version 3
+p = [0.3, 0.2, 0.1, 1., 500., 500., 1.0, 1.0, 1.0, 1., 1., 1.,  0., 0.05, 0.] # version 2
 ss = steady_states(Demethy_TF_MC,p)
 sort!(ss, by = x -> x[1])
 
@@ -162,19 +163,18 @@ var = [:N, :T, :O]
 # First Visulization =====================
 # ===== 3d model DOT defined by N-T-O-----
 using Interact
-slider_rg = 0:10000.0
+slider_rg = 0:10.0
 @manipulate for KO = 0:0.01:1.0, K_nt = 0:0.01:1.0, Kd = 0:0.01:1.0, a1 = 0:0.1:10.0, d=0:0.1:10.0,  a_nt = 0:10:1000.0, aO = 0:10:1000.0, alphaT = 0:0.1:10.0, alphaO = 0:0.1:10.0, alphaN = 0:0.1:10.0, delta = 0:0.1:10.0, gamma = slider_rg, theta = slider_rg
-    # p = [KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.] # version 1/2
-    p = [KO, K_nt, Kd, a1, d, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.] # version 3
+    p = [KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.] # version 1/2
+    # p = [KO, K_nt, Kd, a1, d, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.] # version 3
     ss = steady_states(Demethy_TF_MC,p)
     sort!(ss, by = x -> x[1])
 
-    ss_round = [round.(i, digits = 3) for i in ss]
-    dfc = DataFrame(vcat(ss_round))
+    # ss_round = [round.(i, digits = 3) for i in ss]
+    dfc = DataFrame(vcat(ss))
     dfc.name = Demethy_TF_MC.syms
     var = [:N, :T, :O]
-    df_iPS = dfc |> @filter(_.name in var) |> DataFrame
-    @show Matrix(df_iPS)
+    @show dfc1 = dfc |> @filter(_.name in var) |> DataFrame
 
     if length(ss) >2
         DOT   = (norm(ss[1]-ss[2]))/(norm(ss[1]-ss[3])) # 2nd def
@@ -187,7 +187,8 @@ slider_rg = 0:10000.0
     sb2 = stability_tianchi(ss,Demethy_TF_MC,p,3)
 
     # Plotting
-    plot(sort([i[[1,2,9]] for i in ss]),xticks = 1.:1.:3,label =string.(sb2),marker = (:hexagon, 10, 0.7, :green, stroke(1, 0.1, :black, :dot)))
+    m2_idx = [1,2,8]
+    plot(sort([i[m2_idx] for i in ss]),xticks = 1.:1.:3,label =string.(sb2),marker = (:hexagon, 10, 0.7, :green, stroke(1, 0.1, :black, :dot)))
     plot!(xticks = ([1.:1.:3;], ["N", "T", "O"]))
 end
 
@@ -195,7 +196,7 @@ end
 
 
 
-# We call this 2D model because we want to reduce the full model to only two genes with slow methylation dynamics.
+# We call this 2D model because we want to reduce the full model to only two genes with slow methylation dynamics (version 2 model).
 # 2 Genes : oct4, Nanog
 # The reduced model is actually 4D in terms of O,N, Do00, Dm
 using ParameterizedFunctions
@@ -213,7 +214,7 @@ end KO K_nt Kd a1 a_nt aO alphaT alphaO alphaN delta gamma theta m1 m2 m3
 
 # ====== Basin of Attraction (BOA) ========= testing now
 using Suppressor
-range = 0:0.1:10.
+range = 0:10.
 function DOT_Volume_params(KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta; range = 0:0.1:10., param = "γ")
     C = similar(range)
     for i in eachindex(range) #@suppress
@@ -227,25 +228,29 @@ function DOT_Volume_params(KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, d
         sort!(ss, by = x -> x[1])
         # @show ss[1]
         if length(ss) >2
-            smpl_max = extrema(vcat(ss...))[2]*1.5
+            N_Do_O_Dm_idx = [1,4,8,15]
+            Low = ss[1][N_Do_O_Dm_idx]; Mid = ss[2][N_Do_O_Dm_idx]; High = ss[3][N_Do_O_Dm_idx]
+            @show Low Mid High
+
+            smpl_max = extrema(vcat([each[N_Do_O_Dm_idx] for each in ss]...))[2]*1.5
             @show smpl_max
-            cube_O = cube_N = LinRange(0.,smpl_max,10)
-            con = 5
+            cube_O = cube_N = LinRange(0.,smpl_max,15)
+            con = 1
             tspan = (0., 5e2)
             soma = []
             TV = 0
-            for O = cube_O, N = cube_N, Do00 = LinRange(0., con, 20)
+            for O = cube_O, N = cube_N, Do00 = LinRange(0., con, 10)
                 if con - Do00 >0
                     Dm = con - Do00
                     u0 = [N,Do00,O,Dm]
-                    @show u0
+                    # @show u0
                     prob = ODEProblem(reduced_ODE_4d,u0,tspan,p)
                     sol = solve(prob,Rosenbrock23())
                     rd_idx = [1,4,8,15]
                     f_ss = norm(sol[end] .- ss[1][rd_idx]) < 0.1 ? 1 : 0
                     push!(soma, f_ss)
                     TV += 1
-                    # @show sol[end]
+                    # @show f_ss
                 end
             end
             DOT = sum(soma)/TV
@@ -257,9 +262,10 @@ function DOT_Volume_params(KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, d
     return C
 end
 
-p = [0.3, 0.2, 0.1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1]
-C = DOT_Volume_params(p..., range = [0:0.01:0.1; .1:.1:6.],param = "θ")
-plot([0:0.01:0.1; .1:.1:6.], C)
+p = [0.3, 0.2, 0.1, 1., 10., 10., .5, 1.0, 1.0, 1., 10., 1.] # version 2
+rg = [0:10.; 10.:10.:50.]
+C = DOT_Volume_params(p..., range = rg,param = "θ")
+plot(rg, C)
 
 
 

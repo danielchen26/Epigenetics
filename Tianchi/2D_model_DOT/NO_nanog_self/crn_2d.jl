@@ -5,6 +5,7 @@ using DataFrames, Queryverse, Latexify
 include(pwd()*"/functions.jl")
 
 # --- CRN model ------
+
 # === version 1.
 Demethy_TF_MC = @reaction_network begin
     # ============== 💠 ===============
@@ -47,7 +48,7 @@ Demethy_TF_MC = @reaction_network begin
     m3,              ∅ → O
 end KO K_nt Kd a1 a_nt aO alphaT alphaO alphaN delta gamma theta m1 m2 m3
 
-# === version 2. NT control the demethylation [prefered]
+# === version 2. NT control the demethylation
 Demethy_TF_MC = @reaction_network begin
     # ============== 💠 ===============
     # N T complex
@@ -87,6 +88,50 @@ Demethy_TF_MC = @reaction_network begin
     m2,              ∅ → T
     m3,              ∅ → O
 end KO K_nt Kd a1 a_nt aO alphaT alphaO alphaN delta gamma theta m1 m2 m3
+
+# === version 3. NT2 control the demethylation and promoters [prefered]
+Demethy_TF_MC = @reaction_network begin
+    # ============== 💠 ===============
+    # N T complex
+    (a1, Kd*a1),              N + T ↔ NT
+    (d,d),                    NT + NT ↔ NT2 # NT dimerization
+    # --- Promoter binding
+    # Oct4
+    (a_nt, K_nt*a_nt),        NT2 + Do00 ↔ Do10
+    (a_nt, K_nt*a_nt),        NT2 + Do01 ↔ Do11
+    (aO, KO*aO),              O + Do00 ↔ Do01
+    (aO, KO*aO),              O + Do10 ↔ Do11
+    # TET
+    (a_nt, K_nt*a_nt),        NT2 + Dt00 ↔ Dt10
+    (a_nt, K_nt*a_nt),        NT2 + Dt01 ↔ Dt11
+    (aO, KO*aO),              O + Dt00 ↔ Dt01
+    (aO, KO*aO),              O + Dt10 ↔ Dt11
+    # Nanog
+    (aO, KO*aO),              O + Dn0 ↔ Dn1
+
+    # --- Protein production
+    alphaT,                   Dt11 → Dt11 + T
+    alphaO,                   Do11 → Do11 + O
+    alphaN,                   Dn1 → Dn1 + N
+
+    # --- Dilution and Degradation
+    (delta,delta,delta),           (N, T, O) → ∅
+
+    # ============   🔺 ===============
+    # # Oct4 de-Methylation cycle  ---- 💚NT or NT2?
+    # a_dn,                Do00 → D5mc                # D + DNMT ↔ C₁ → D5mc + DNMT
+    # kh,                  NT + D5mc → D5hmc + NT     # NT oxidize 5mc -> 5hmC
+    # beta,                D5hmc →  Do00              # 5hmC -> C by
+    # ============ ⟺ ===================
+    gamma,             Do00 → Dm   # simplification of the 🔺
+    theta,             Dm + NT2 ⇀ Do00 + NT2
+    # ---- NTO rate control m1 m2 m3-----
+    m1,              ∅ → N
+    m2,              ∅ → T
+    m3,              ∅ → O
+end KO K_nt Kd a1 d a_nt aO alphaT alphaO alphaN delta gamma theta m1 m2 m3
+
+# Add constraints
 @add_constraints Demethy_TF_MC begin
   # Do00 + Do01 + Do10 + Do11 + D5mc + D5hmc  = 1 # if use 🔺for demethylation
   Do00 + Do01 + Do10 + Do11 + Dm  = 1 # if use ⟺ for dedemethylation
@@ -94,9 +139,13 @@ end KO K_nt Kd a1 a_nt aO alphaT alphaO alphaN delta gamma theta m1 m2 m3
   Dn0 + Dn1 = 1
 end
 
+
+
+
 p = [0.3, 0.2, 0.1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1,  0., 0.05, 0.]
 ss = steady_states(Demethy_TF_MC,p)
 sort!(ss, by = x -> x[1])
+
 sb = stability(ss,Demethy_TF_MC,p)
 sb2 = stability_tianchi(ss,Demethy_TF_MC,p,3)
 
@@ -113,8 +162,10 @@ var = [:N, :T, :O]
 # First Visulization =====================
 # ===== 3d model DOT defined by N-T-O-----
 using Interact
-@manipulate for KO = 0:0.01:1.0, K_nt = 0:0.01:1.0, Kd = 0:0.01:1.0, a1 = 0:0.1:10.0,  a_nt = 0:10:1000.0, aO = 0:10:1000.0, alphaT = 0:0.1:10.0, alphaO = 0:0.1:10.0, alphaN = 0:0.1:10.0, delta = 0:0.1:10.0, gamma = 0:0.1:10.0, theta = 0:0.1:10.0
-    p = [KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.]
+slider_rg = 0:10000.0
+@manipulate for KO = 0:0.01:1.0, K_nt = 0:0.01:1.0, Kd = 0:0.01:1.0, a1 = 0:0.1:10.0, d=0:0.1:10.0,  a_nt = 0:10:1000.0, aO = 0:10:1000.0, alphaT = 0:0.1:10.0, alphaO = 0:0.1:10.0, alphaN = 0:0.1:10.0, delta = 0:0.1:10.0, gamma = slider_rg, theta = slider_rg
+    # p = [KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.] # version 1/2
+    p = [KO, K_nt, Kd, a1, d, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta, 0., 0.05, 0.] # version 3
     ss = steady_states(Demethy_TF_MC,p)
     sort!(ss, by = x -> x[1])
 
@@ -144,35 +195,54 @@ end
 
 
 
-# ====== Basin of Attraction (BOA) ========= Not yet started
+# We call this 2D model because we want to reduce the full model to only two genes with slow methylation dynamics.
+# 2 Genes : oct4, Nanog
+# The reduced model is actually 4D in terms of O,N, Do00, Dm
+using ParameterizedFunctions
+reduced_ODE_4d = @ode_def_bare begin # m1 -> N     m2 -> T     m3 -> O
+    dN    = m1 - N*delta + (O*alphaN)/(KO + O)
+
+    dDo00 = (Dm*N^2*O^2*alphaT^2*theta - 2*KO^2*K_nt*Kd^2*delta^2*gamma + Dm*KO^2*N^2*m2^2*theta + Dm*N^2*O^2*m2^2*theta - 2*KO*K_nt*Kd^2*O*delta^2*gamma + 2*Dm*KO*N^2*O*m2^2*theta + 2*Dm*N^2*O^2*alphaT*m2*theta + 2*Dm*KO^2*K_nt*Kd^2*delta^2*gamma + Dm*N*O*alphaT*theta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + Dm*KO*N*m2*theta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + Dm*N*O*m2*theta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + 2*Dm*KO*N^2*O*alphaT*m2*theta + 2*Dm*KO*K_nt*Kd^2*O*delta^2*gamma - Dm*K_nt*Kd*N*O^2*alphaT*delta*theta + Dm*KO^2*K_nt*Kd*N*delta*m2*theta + Dm*K_nt*Kd*N*O^2*delta*m2*theta - Dm*KO*K_nt*Kd*N*O*alphaT*delta*theta + 2*Dm*KO*K_nt*Kd*N*O*delta*m2*theta)/(Kd*delta*(KO + O)*((KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + N*O*alphaT + KO*N*m2 + N*O*m2 + KO*K_nt*Kd*delta + K_nt*Kd*O*delta))
+
+    dO    = -(O^2*delta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) - O*alphaO*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) - KO*m3*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) - O*m3*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + Dm*O*alphaO*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + KO*O*delta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) - N*O^2*alphaO*alphaT + N*O^3*alphaT*delta - N*O^2*alphaO*m2 - N*O^2*alphaT*m3 + N*O^3*delta*m2 - KO^2*N*m2*m3 - N*O^2*m2*m3 + K_nt*Kd*O^3*delta^2 - KO*N*O*alphaO*m2 - KO*N*O*alphaT*m3 - 2*KO*N*O*m2*m3 + Dm*N*O^2*alphaO*alphaT + K_nt*Kd*O^2*alphaO*delta + KO*N*O^2*alphaT*delta + Dm*N*O^2*alphaO*m2 - KO^2*K_nt*Kd*delta*m3 - K_nt*Kd*O^2*delta*m3 + 2*KO*N*O^2*delta*m2 + KO^2*N*O*delta*m2 + 2*KO*K_nt*Kd*O^2*delta^2 + KO^2*K_nt*Kd*O*delta^2 + KO*K_nt*Kd*O*alphaO*delta + Dm*KO*N*O*alphaO*m2 - 2*KO*K_nt*Kd*O*delta*m3 - Dm*K_nt*Kd*O^2*alphaO*delta - Dm*KO*K_nt*Kd*O*alphaO*delta)/((KO + O)*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + N*m2*(KO + O)^2 + N*O*alphaT*(KO + O) + K_nt*Kd*delta*(KO + O)^2)
+
+    dDm   = -(Dm*N^2*O^2*alphaT^2*theta - 2*KO^2*K_nt*Kd^2*delta^2*gamma + Dm*KO^2*N^2*m2^2*theta + Dm*N^2*O^2*m2^2*theta - 2*KO*K_nt*Kd^2*O*delta^2*gamma + 2*Dm*KO*N^2*O*m2^2*theta + 2*Dm*N^2*O^2*alphaT*m2*theta + 2*Dm*KO^2*K_nt*Kd^2*delta^2*gamma + Dm*N*O*alphaT*theta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + Dm*KO*N*m2*theta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + Dm*N*O*m2*theta*(KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + 2*Dm*KO*N^2*O*alphaT*m2*theta + 2*Dm*KO*K_nt*Kd^2*O*delta^2*gamma - Dm*K_nt*Kd*N*O^2*alphaT*delta*theta + Dm*KO^2*K_nt*Kd*N*delta*m2*theta + Dm*K_nt*Kd*N*O^2*delta*m2*theta - Dm*KO*K_nt*Kd*N*O*alphaT*delta*theta + 2*Dm*KO*K_nt*Kd*N*O*delta*m2*theta)/(Kd*delta*(KO + O)*((KO^2*K_nt^2*Kd^2*delta^2 + 2*KO^2*K_nt*Kd*N*delta*m2 + KO^2*N^2*m2^2 + 2*KO*K_nt^2*Kd^2*O*delta^2 - 2*KO*K_nt*Kd*N*O*alphaT*delta + 4*KO*K_nt*Kd*N*O*delta*m2 + 2*KO*N^2*O*alphaT*m2 + 2*KO*N^2*O*m2^2 + K_nt^2*Kd^2*O^2*delta^2 - 2*K_nt*Kd*N*O^2*alphaT*delta + 2*K_nt*Kd*N*O^2*delta*m2 + N^2*O^2*alphaT^2 + 2*N^2*O^2*alphaT*m2 + N^2*O^2*m2^2)^(1/2) + N*O*alphaT + KO*N*m2 + N*O*m2 + KO*K_nt*Kd*delta + K_nt*Kd*O*delta))
+end KO K_nt Kd a1 a_nt aO alphaT alphaO alphaN delta gamma theta m1 m2 m3
+
+
+
+# ====== Basin of Attraction (BOA) ========= testing now
+using Suppressor
 range = 0:0.1:10.
-function DOT_Volume_params(α, ϵ, β, η, γ, θ, δ; range = 0:0.1:10., param = "γ")
+function DOT_Volume_params(KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, theta; range = 0:0.1:10., param = "γ")
     C = similar(range)
-    @suppress for i in eachindex(range)
+    for i in eachindex(range) #@suppress
         # @show i
         if param == "γ"
-            p = [α, ϵ, β, η, range[i], θ, δ]
+            p = [KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, range[i], theta, 0., 0.05, 0.]
         elseif param == "θ"
-            p = [α, ϵ, β, η, γ, range[i], δ]
+            p = [KO, K_nt, Kd, a1, a_nt, aO, alphaT, alphaO, alphaN, delta, gamma, range[i],  0., 0.05, 0.]
         end
-        ss = steady_states(rn1d_leak,p)
+        ss = steady_states(Demethy_TF_MC,p)
         sort!(ss, by = x -> x[1])
         # @show ss[1]
         if length(ss) >2
             smpl_max = extrema(vcat(ss...))[2]*1.5
-            cube_O = LinRange(0.,smpl_max,10)
+            @show smpl_max
+            cube_O = cube_N = LinRange(0.,smpl_max,10)
             con = 5
             tspan = (0., 5e2)
             soma = []
             TV = 0
-            for O = cube_O, Di = LinRange(0., con, 20), Da = LinRange(0.,con,20)
-                if con - Di -Da >0
-                    Dm = con - Di -Da
-                    u0 = [O,Di,Da,Dm]
-                    # @show u0
-                    prob = ODEProblem(rn1d_leak,u0,tspan,p)
+            for O = cube_O, N = cube_N, Do00 = LinRange(0., con, 20)
+                if con - Do00 >0
+                    Dm = con - Do00
+                    u0 = [N,Do00,O,Dm]
+                    @show u0
+                    prob = ODEProblem(reduced_ODE_4d,u0,tspan,p)
                     sol = solve(prob,Rosenbrock23())
-                    f_ss = norm(sol[end] .- ss[1]) < 0.1 ? 1 : 0
+                    rd_idx = [1,4,8,15]
+                    f_ss = norm(sol[end] .- ss[1][rd_idx]) < 0.1 ? 1 : 0
                     push!(soma, f_ss)
                     TV += 1
                     # @show sol[end]
@@ -186,28 +256,19 @@ function DOT_Volume_params(α, ϵ, β, η, γ, θ, δ; range = 0:0.1:10., param 
     end
     return C
 end
-# ===test above two functions ====
-C_1d, C_3d = DOT_γ(5., 5., 5., 0.1, 5., 5.)
-C = DOT_Volume_params(5., 5., 5., 0.1, 5., 0., 5., range = [0:0.1:2.;2.:1.:10.], param = "θ")
-plot([0:0.1:2.;2.:1.:10.],C)
+
+p = [0.3, 0.2, 0.1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1]
+C = DOT_Volume_params(p..., range = [0:0.01:0.1; .1:.1:6.],param = "θ")
+plot([0:0.01:0.1; .1:.1:6.], C)
 
 
 
 
-
-
-# dN     = m1 + Dn1*alphaN - N*delta - N*T*a1 + NT*Kd*a1
-# dT     = m2 + Dt11*alphaT - T*delta - N*T*a1 + NT*Kd*a1
-# dNT    = K_nt*a_nt*Do10 + K_nt*a_nt*Do11 + K_nt*a_nt*Dt10 + K_nt*a_nt*Dt11 + N*T*a1 - NT*Kd*a1 - NT*a_nt*Do00 - NT*a_nt*Do01 - NT*a_nt*Dt00 - NT*a_nt*Dt01
-# dDo00  = -Do00*gamma + KO*aO*Do01 + K_nt*a_nt*Do10 + NT*Dm*theta - NT*a_nt*Do00 - O*aO*Do00
-# dDo10  = KO*aO*Do11 - K_nt*a_nt*Do10 + NT*a_nt*Do00 - O*aO*Do10
-# dDo01  = -KO*aO*Do01 + K_nt*a_nt*Do11 - NT*a_nt*Do01 + O*aO*Do00
-# dDo11  = -KO*aO*Do11 - K_nt*a_nt*Do11 + NT*a_nt*Do01 + O*aO*Do10
-# dO     = m3 + Do11*alphaO - O*delta + KO*aO*Dn1 + KO*aO*Do01 + KO*aO*Do11 + KO*aO*Dt01 + KO*aO*Dt11 - O*aO*Dn0 - O*aO*Do00 - O*aO*Do10 - O*aO*Dt00 - O*aO*Dt10
-# dDt00  = KO*aO*Dt01 + K_nt*a_nt*Dt10 - NT*a_nt*Dt00 - O*aO*Dt00
-# dDt10  = KO*aO*Dt11 - K_nt*a_nt*Dt10 + NT*a_nt*Dt00 - O*aO*Dt10
-# dDt01  = -KO*aO*Dt01 + K_nt*a_nt*Dt11 - NT*a_nt*Dt01 + O*aO*Dt00
-# dDt11  = -KO*aO*Dt11 - K_nt*a_nt*Dt11 + NT*a_nt*Dt01 + O*aO*Dt10
-# dDn0   = KO*aO*Dn1 - O*aO*Dn0
-# dDn1   = -KO*aO*Dn1 + O*aO*Dn0
-# dDm    = Do00*gamma - NT*Dm*theta
+# Test reduced 4d
+using DifferentialEquations
+u0 = [5.698513885281152, 0.2631578947368421, 3.256293648732086, 4.7368421052631575]
+tspan = (0., 5e2)
+p = [0.3, 0.2, 0.1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1, 0., 0.05, 0.]
+prob = ODEProblem(reduced_ODE_4d,u0,tspan,p)
+sol = solve(prob,Rosenbrock23())
+plot(sol)

@@ -1,9 +1,8 @@
 using DiffEqBiological, DifferentialEquations
 using Plots;gr()
 using LinearAlgebra, DataFrames, Queryverse
-module fun
-    include("../functions.jl")
-end
+include(pwd()*"/functions.jl")
+
 # ================ CRN of demethylation on top of TF binding =============
 Demethy_TF_MC = @reaction_network begin
     # ============== 💠 ===============
@@ -53,8 +52,10 @@ end
 
 p = [0.3, 0.2, 0.1, 1, 1, 1000, 1000, 1.0, 1.0, 1.0, 1, 1, 1, 1,  0., 0.05, 0.]
 ss = steady_states(Demethy_TF_MC,p)
-stability(ss,Demethy_TF_MC,p)
 sort!(ss, by = x -> x[1]) # sort by Nanog
+sb = stability(ss,Demethy_TF_MC,p)
+sb2 = stability_tianchi(ss,Demethy_TF_MC,p,3)
+
 
 # show DataFrame
 dfc = DataFrame(vcat(ss))
@@ -67,8 +68,7 @@ var = [:N, :T, :O]
 
 # First Visulization =====================
 # ===== 3d model DOT defined by N-T-O-----
-
-using Interact, Suppressor, ProgressMeter
+using Interact
 @manipulate for KO = 0:0.01:1.0, K_nt = 0:0.01:1.0, Kd = 0:0.01:1.0, a1 = 0:0.1:10.0, d = 0:0.1:10.0, a_nt = 0:10:1000.0, aO = 0:10:1000.0, alphaT = 0:0.1:10.0, alphaO = 0:0.1:10.0, alphaN = 0:0.1:10.0, delta = 0:0.1:10.0, a_dn = 0:0.1:10.0, kh = 0:0.1:10.0, beta= 0:0.1:10.0
     p = [KO, K_nt, Kd, a1, d, a_nt, aO, alphaT, alphaO, alphaN, delta, a_dn, kh, beta, 0., 0.05, 0.]
     ss = steady_states(Demethy_TF_MC,p)
@@ -79,13 +79,19 @@ using Interact, Suppressor, ProgressMeter
     var = [:N, :T, :O]
     df_iPS = dfc |> @filter(_.name in var) |> DataFrame
     @show Matrix(df_iPS)
+
     if length(ss) >2
         DOT   = (norm(ss[1]-ss[2]))/(norm(ss[1]-ss[3]))
         @show DOT
     else
          @show "single state"
     end
-    plot(sort([i[[1,2,9]] for i in ss]), xlabel = "N-T-O",marker = (:hexagon, 10, 0.7, :green, stroke(1, 0.1, :black, :dot)))
+
+    # Check stability
+    sb2 = stability_tianchi(ss,Demethy_TF_MC,p,3)
+    # Plotting
+    plot(sort([i[[1,2,9]] for i in ss]),xticks = 1.:1.:3,label =string.(sb2),marker = (:hexagon, 10, 0.7, :green, stroke(1, 0.1, :black, :dot)))
+    plot!(xticks = ([1.:1.:3;], ["N", "T", "O"]))
     # println("The SS states are:")
     # sort!(ss, by = x -> x[1])
     # @show ss
@@ -333,11 +339,6 @@ function separatrix( KO, K_nt, Kd, a1, d, a_nt, aO, alphaT, alphaO, alphaN, delt
     end
     return C
 end
-
-
-
-
-
 
 
 

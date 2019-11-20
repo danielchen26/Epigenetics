@@ -1,13 +1,13 @@
 using DiffEqBiological, DifferentialEquations
 using Plots;gr()
 using LinearAlgebra
-
+using JLD2
+using LaTeXStrings
 include(pwd()*"/functions.jl")
 
 
 
 # 1. ======== CRN ========
-
 rn1d_leak = @reaction_network begin
  (α, ϵ),            2O + Di ↔ Da
   β,                Da → Da + O
@@ -144,7 +144,6 @@ function DOT_Volume_params(α, ϵ, β, η, γ, θ, δ; range = 0:0.1:10., param 
     return C
 end
 
-
 # ===test above two functions ====
 C_1d, C_3d = DOT_γ(5., 5., 5., 0.1, 5., 5.)
 C = DOT_Volume_params(5., 5., 5., 0.1, 5., 0., 5., range = [0:0.1:2.;2.:1.:10.], param = "θ")
@@ -153,22 +152,55 @@ plot([0:0.1:2.;2.:1.:10.],C)
 
 
 #  ======= plot DOT_Volume_params sample ======
-pp_sample = plot()
-range = 0:20.
-@showprogress for α = 0:0.5:5., ϵ = 0:0.5:5., β = 0:0.5:5., γ = 4.:0.5:5., δ = 4.:0.5:5.
-    C = DOT_Volume_params(α, ϵ, β, 0.1, γ, 5., δ, range = range, param = "θ")
-    if sum(isnan.(C)) < length(C)
-        @show C
-        plot!(pp_sample,range,C)
-    else
-        continue
-    end
+#  ====== 1d γ plot ====
+C_1d_γ = []; range = exp10.(-2:2) #0:20.
+@showprogress for α =0:0.5:5., ϵ = 0:0.5:5., β = 0:0.5:5., θ = 0:0.5:5., δ = 4.:0.5:5.
+    C = DOT_Volume_params(α, ϵ, β, 0.1, 5., θ, δ, range = range, param = "γ")
+    push!(C_1d_γ,C)
     sleep(0.01)
 end
 
-plot(pp_sample,xlabel="Theta", ylabel = "Domain of Attraction %", legend = false)
-title!("DOT Sampling")
-savefig(pp_sample,"/Users/chentianchi/Desktop/DOT_volume_θ_all.png")
+@showprogress for α = 0:0.5:5., ϵ = 0:0.5:5., β = 0:0.5:5., θ = 4.:0.5:5., δ = 4.:0.5:5.
+    C = DOT_Volume_params(α, ϵ, β, 0.1, 5., θ, δ, range = range, param = "γ")
+    push!(C_1d_γ,C)
+    # if sum(isnan.(C)) < length(C)
+    #     @show C
+    #     plot!(pp_sample,range,C)
+    # else
+    #     continue
+    # end
+    sleep(0.01)
+end
+@save "BOA_γ_1d[α,ϵ,θ,δ]{range= 0:20,C_1d_γ}.jld2" C_1d_γ
+@load "BOA_γ_1d[α,ϵ,θ,δ]{range= 0:20,C_1d_γ}.jld2" C_1d_γ
+BOA_γ_1d = plot(range, C_1d_γ.*100, ylabel = "Basin of Attraction %", xlabel = L"\gamma" ,legend =false)
+@save "BOA_γ_1d[α,ϵ,θ,δ]{range= exp10.(-2:0.1:2.5),C_1d_γ}_nf.jld2" C_1d_γ
+BOA_γ_1d = plot(range, C_1d_γ.*100, xscale = :log10, ylabel = "Basin of Attraction %", xlabel = "gamma" ,legend =false)
+range= 0:20
+savefig(BOA_γ_1d,"/Users/chentianchi/Desktop/BOAp_γ_1d.png")
+
+#  ====== 1d θ plot ====
+C_1d_θ = []; range = exp10.(-2:0.1:2.5) #0:20.
+@showprogress for α = 0:0.5:5., ϵ = 0:0.5:5., β = 0:0.5:5., γ = 4.:0.5:5., δ = 4.:0.5:5.
+    C = DOT_Volume_params(α, ϵ, β, 0.1, γ, 5., δ, range = range, param = "θ")
+    push!(C_1d_θ,C)
+    # if sum(isnan.(C)) < length(C)
+    #     @show C
+    #     plot!(pp_sample,range,C)
+    # else
+    #     continue
+    # end
+    sleep(0.01)
+end
+@save "BOA_θ_1d[α,ϵ,γ,δ]{range= 0:20,C_1d_θ}.jld2" C_1d_θ
+@load "BOA_θ_1d[α,ϵ,γ,δ]{range= 0:20,C_1d_θ}.jld2" C_1d_θ
+BOA_θ_1d = plot(range, C_1d_θ.*100, ylabel = "Basin of Attraction %", xlabel = L"\theta" ,legend =false)
+savefig(BOA_θ_1d,"/Users/chentianchi/Desktop/BOAp_θ_1d.png")
+
+
+
+
+
 
 
 
@@ -199,43 +231,6 @@ savefig(pp,"/Users/chentianchi/Desktop/αβϵθδ.png")
 #     sleep(0.01)
 # end
 # hcat(P_set...)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# example savinf variables
-# ----  Saving Data for reproducible plots in the future ---
-using JLD2
-@save "out.jld2" ss
-@load "out.jld2" ss
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -280,3 +275,68 @@ using JLD2
 # sim = solve(ensemble_prob,SRIW1(),trajectories=10)
 # plot(sim,linealpha=0.6,color=:blue,vars=(0,1),title="Phase Space Plot")
 # plot!(sim,linealpha=0.6,color=:red,vars=(0,2),title="Phase Space Plot")
+
+
+
+
+
+# ======== Keep R = γ/θ same and change γ =================
+function DOT_Volume_params_R_fixed(α, ϵ, β, η, γ, δ, R; range = 0:0.1:10., param = "γ")
+    C = similar(range)
+    @suppress for i in eachindex(range)
+        # @show i
+        if param == "γ"
+            p = [α, ϵ, β, η, range[i], range[i]/R, δ]
+        end
+        ss = steady_states(rn1d_leak,p)
+        sort!(ss, by = x -> x[1])
+        # @show ss[1]
+        if length(ss) >2
+            smpl_max = extrema(vcat(ss...))[2]*1.5 # predifined volume
+            cube_O = LinRange(0.,smpl_max,10)
+            con = 5
+            tspan = (0., 5e2)
+            soma = []
+            TV = 0
+            for O = cube_O, Di = LinRange(0., con, 20), Da = LinRange(0.,con,20)
+                if con - Di -Da >0
+                    Dm = con - Di -Da
+                    u0 = [O,Di,Da,Dm]
+                    # @show u0
+                    prob = ODEProblem(rn1d_leak,u0,tspan,p)
+                    sol = solve(prob,Rosenbrock23())
+                    f_ss = norm(sol[end] .- ss[1]) < 0.1 ? 1 : 0
+                    push!(soma, f_ss)
+                    TV += 1
+                    # @show sol[end]
+                end
+            end
+            # for i = 1:2e3
+            #     u0 = init_rand(cube_O,con)
+            #     prob = ODEProblem(rn1d_leak,u0,tspan,p)
+            #     sol = solve(prob,Rosenbrock23())
+            #     @show sol[end]
+            #     f_ss = norm(sol[end] .- ss[1]) < 0.1 ? 1 : 0
+            #     @show f_ss
+            #     push!(soma, f_ss)
+            # end
+            DOT = sum(soma)/TV
+            C[i] = DOT
+        else
+            C[i] = NaN
+        end
+    end
+    return C
+end
+
+
+CRγ =[];rg = exp10.(-3:0.1:1)
+@time @showprogress "Computing..." for α = 4.4,ϵ = 1.8, β = 2.5, γ = 0.9, δ =4.6, R = .2:0.1:1
+    CR = DOT_Volume_params_R_fixed(α, ϵ, β, 0.1, γ, δ, R, range = rg, param = "γ")
+    @show CR
+    push!(CRγ,CR)
+    sleep(0.01)
+end
+
+BOA_R_γ_plt = plot(rg, CRγ.*100, ylabel = "Basin of Attraction %", xscale =:log10, xlabel = L"\gamma" , label =["0.2" , "0.3" , "0.4", "0.5", "0.6","0.7","0.8","0.9","1"], legendtitle = "R ratio", legend = :topright)
+savefig(BOA_R_γ_plt, "~/Desktop/BOAp_1d_R_4orders.png")
